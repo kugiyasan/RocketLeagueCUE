@@ -28,5 +28,6 @@
 *.app
 
 .vs/
+.vscode/
 x64/
 *.user

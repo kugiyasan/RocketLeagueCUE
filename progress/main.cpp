@@ -1,5 +1,6 @@
 //
-// forked from CUE SDK Example progress.cpp
+// forked from kayteh/RocketLeagueCUE
+// which is forked from CUE SDK Example progress.cpp
 //
 #define CORSAIR_LIGHTING_SDK_DISABLE_DEPRECATION_WARNINGS
 
@@ -18,6 +19,11 @@
 #include <stdlib.h>
 #include <tchar.h>
 #include <psapi.h>
+
+const int redZone = 80; // darkOrangeStop
+const int yellowStop = 60;
+const int lightOrangeStop = 70;
+const char *windowName = "Rocket League (64-bit, DX11, Cooked)";
 
 const char *toString(CorsairError error)
 {
@@ -40,10 +46,6 @@ const char *toString(CorsairError error)
     }
 }
 
-const int redZone = 80; // darkOrangeStop
-const int yellowStop = 60;
-const int lightOrangeStop = 70;
-
 double getKeyboardWidth(CorsairLedPositions *ledPositions)
 {
     const auto minmaxLeds = std::minmax_element(
@@ -51,26 +53,33 @@ double getKeyboardWidth(CorsairLedPositions *ledPositions)
         [](const CorsairLedPosition &clp1, const CorsairLedPosition &clp2) {
             return clp1.left < clp2.left;
         });
-    return minmaxLeds.second->left + minmaxLeds.second->width - minmaxLeds.first->left;
+
+    // std::cout << minmaxLeds.second->left << " + "
+    //           << minmaxLeds.second->width << " - "
+    //           << minmaxLeds.first->left << "\n";
+    // For a corsair K68, the values are:
+    // 429 + 13 - 21
+    return minmaxLeds.second->left + minmaxLeds.second->width;
+    // - minmaxLeds.first->left;
 }
 
 DWORD getProcessId()
 {
-    HWND hWnd = FindWindowA(NULL, "Rocket League (64-bit, DX11, Cooked)");
+    HWND hWnd = FindWindowA(NULL, windowName);
 
     if (hWnd == NULL)
         return NULL;
 
-    DWORD procId;
-    GetWindowThreadProcessId(hWnd, &procId);
+    DWORD processID;
+    GetWindowThreadProcessId(hWnd, &processID);
 
-    return procId;
+    return processID;
 }
 
 HANDLE initProcessHandle()
 {
-    DWORD procId = getProcessId();
-    return OpenProcess(PROCESS_VM_READ, true, procId);
+    DWORD processID = getProcessId();
+    return OpenProcess(PROCESS_VM_READ, true, processID);
 }
 
 DWORD_PTR GetProcessBaseAddress()
@@ -90,9 +99,7 @@ DWORD_PTR GetProcessBaseAddress()
             HMODULE *moduleArray = (HMODULE *)moduleArrayBytes;
 
             if (EnumProcessModules(processHandle, moduleArray, bytesRequired, &bytesRequired))
-            {
                 baseAddress = (DWORD_PTR)moduleArray[0];
-            }
 
             LocalFree(moduleArrayBytes);
         }
@@ -103,72 +110,73 @@ DWORD_PTR GetProcessBaseAddress()
     return baseAddress;
 }
 
-int getRocketLeagueTurbo(HANDLE h, INT_PTR p)
+HANDLE getRocketLeagueHandle()
 {
-    if (h == NULL || p == 0)
+    HANDLE handle = NULL;
+
+    while (handle == NULL && !GetAsyncKeyState(VK_ESCAPE))
     {
-        // handler isn't initalized,
-        // rocket league probs isn't open.
-        return 0;
+        handle = initProcessHandle();
+        if (handle == NULL)
+        {
+            std::cout << "Can't find Rocket League. Please start the gaaaaame!\n";
+        }
+        else
+        {
+            std::cout << "Found Rocket League!\n";
+            return handle;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
+}
 
+int getRocketLeagueTurbo(HANDLE handle, INT_PTR p)
+{
     int value;
-
-    //std::cout << "\n getting " << std::hex << p;
-    ReadProcessMemory(h, (LPVOID)p, &value, 4, NULL);
-    // std::cout << "\n got something!\n-> " << value << "\n";
+    ReadProcessMemory(handle, (LPVOID)p, &value, 4, NULL);
 
     return value;
 }
 
-int getRocketLeagueTurboPointer(HANDLE h)
+UINT_PTR getRocketLeagueTurboPointer(HANDLE handle)
 {
-
-    if (h == NULL)
-    {
-        // handler isn't initalized,
-        // rocket league probs isn't open.
-        return 0;
-    }
-    //+015817E0+120+50+6f4+21c
     INT_PTR base = (INT_PTR)(GetProcessBaseAddress());
-    std::cout << std::hex << base << std::endl;
-    base += 0x0062465C;
-
-    int offsets[6] = {0x4A0, 0x54, 0x4C, 0x520, 0x54};
+    std::cout << "ProcessBaseAddress: " << std::hex << base << std::endl
+              << "handle: " << std::hex << handle << std::endl;
+    base += 0x02350D30;
 
     int addr;
-    ReadProcessMemory(h, (LPVOID)(base), &addr, 4, 0);
+    ReadProcessMemory(handle, (LPVOID)base, &addr, 4, NULL);
+    std::cout << "addr: " << addr << std::endl;
 
-    for (int i = 0; i < 7; ++i)
-    {
-        int b;
-        ReadProcessMemory(h, (LPVOID)(addr + offsets[i]), &b, 4, 0);
-        addr = addr + b;
-        std::cout << i << " = " << std::hex << b << "+" << std::hex << offsets[i] << " so addr is now " << std::hex << addr << std::endl;
-    }
+    // int offsets[6] = {0x4A0, 0x54, 0x4C, 0x520, 0x54};
+    // int offsets[] = {0x38C};
 
-    return addr;
+    // for (int offset : offsets)
+    // {
+    //     int b;
+    //     ReadProcessMemory(handle, (LPVOID)(addr + offset), &b, 4, 0);
+    //     addr += b;
+    //     std::cout << std::hex << b
+    //               << "+" << std::hex << offset
+    //               << " so addr is now " << std::hex << addr << std::endl;
+    // }
+
+    return addr + 0x38C;
+    // return addr;
 }
-
-// int lookupRocketLeagueMemoryLocation(HANDLE h) {
-// consecutive postfixes are 4 8 C.
-// i guess we can search for every location % 0x10 == 0, and make sure each postfix+it are both the same and == 0-100
-// if we can't find it, return 0.
-// if we can, return the 4 prefixed location.
-// when they're released (e.g. match ended,) reading code should note the value being greater than 100, and recall me.
-// }
 
 void setLeds(CorsairLedPositions *ledPositions, double percentage)
 {
+    // Should store keyboardWidth instead of calculating it each time
     const double keyboardWidth = getKeyboardWidth(ledPositions);
 
     const double boostWidth = keyboardWidth * percentage / 100;
     std::vector<CorsairLedColor> vec;
 
-    for (int i = 0; i < ledPositions->numberOfLed; i++)
+    for (int i = 0, n = ledPositions->numberOfLed; i < n; i++)
     {
-        const CorsairLedPosition ledPos = ledPositions->pLedPosition[i];
+        const auto ledPos = ledPositions->pLedPosition[i];
         CorsairLedColor ledColor = CorsairLedColor();
         ledColor.ledId = ledPos.ledId;
 
@@ -191,39 +199,20 @@ void setLeds(CorsairLedPositions *ledPositions, double percentage)
     CorsairSetLedsColors(static_cast<int>(vec.size()), vec.data());
 }
 
-void loop(CorsairLedPositions *ledPositions)
+void loop(CorsairLedPositions *ledPositions, HANDLE handle, UINT_PTR pointer)
 {
-    HANDLE handle = NULL;
-    UINT_PTR pointer = 0;
-    bool cantfind = false;
-
-    while (!GetAsyncKeyState(VK_ESCAPE))
+    std::cout << "pointer: " << pointer << std::endl;
+    // while (!GetAsyncKeyState(VK_ESCAPE))
+    while (true)
     {
-        if (handle == NULL)
-        {
-            handle = initProcessHandle();
-            pointer = getRocketLeagueTurboPointer(handle);
-            if (handle == NULL && cantfind == false)
-            {
-                std::cout << "Can't find Rocket League. Please start the gaaaaame!\n";
-                cantfind = true;
-            }
-        }
-
-        if (cantfind && handle != NULL)
-        {
-            std::cout << "Found Rocket League!\n";
-            cantfind = false;
-        }
-
         // XXX: Get this value repeatably. I suck at it.
         // For demos, I used cheat engine to grab the memory locations.
-        // auto percentage = getRocketLeagueTurbo(handle, 0x32E1FC8C);
+        // auto percentage = getRocketLeagueTurbo(handle, 0x1C1F428198C);
         auto percentage = getRocketLeagueTurbo(handle, pointer);
 
         setLeds(ledPositions, percentage);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 }
 
@@ -246,7 +235,10 @@ int main()
     }
 
     std::cout << "Working... Press Escape to close program...\n\n";
-    loop(ledPositions);
+
+    HANDLE handle = getRocketLeagueHandle();
+    UINT_PTR pointer = getRocketLeagueTurboPointer(handle);
+    loop(ledPositions, handle, pointer);
 
     return 0;
 }
