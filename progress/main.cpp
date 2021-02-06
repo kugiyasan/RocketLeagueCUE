@@ -85,7 +85,7 @@ HANDLE initProcessHandle()
 DWORD_PTR GetProcessBaseAddress()
 {
     DWORD processID = getProcessId();
-    DWORD_PTR baseAddress;
+    DWORD_PTR baseAddress = NULL;
     HANDLE processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processID);
     LPBYTE moduleArrayBytes;
     DWORD bytesRequired;
@@ -124,10 +124,11 @@ HANDLE getRocketLeagueHandle()
         else
         {
             std::cout << "Found Rocket League!\n";
-            return handle;
+            break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
+    return handle;
 }
 
 int getRocketLeagueTurbo(HANDLE handle, INT_PTR p)
@@ -138,32 +139,31 @@ int getRocketLeagueTurbo(HANDLE handle, INT_PTR p)
     return value;
 }
 
-UINT_PTR getRocketLeagueTurboPointer(HANDLE handle)
+INT_PTR getRocketLeagueTurboPointer(HANDLE handle)
 {
     INT_PTR base = (INT_PTR)(GetProcessBaseAddress());
     std::cout << "ProcessBaseAddress: " << std::hex << base << std::endl
               << "handle: " << std::hex << handle << std::endl;
     base += 0x02350D30;
 
-    int addr;
-    ReadProcessMemory(handle, (LPVOID)base, &addr, 4, NULL);
+    INT_PTR addr;
+    ReadProcessMemory(handle, (void *)base, &addr, 4, NULL);
     std::cout << "addr: " << addr << std::endl;
 
-    // int offsets[6] = {0x4A0, 0x54, 0x4C, 0x520, 0x54};
-    // int offsets[] = {0x38C};
+    INT_PTR offsets[] = {0x88, 0xC0, 0x08};
 
-    // for (int offset : offsets)
-    // {
-    //     int b;
-    //     ReadProcessMemory(handle, (LPVOID)(addr + offset), &b, 4, 0);
-    //     addr += b;
-    //     std::cout << std::hex << b
-    //               << "+" << std::hex << offset
-    //               << " so addr is now " << std::hex << addr << std::endl;
-    // }
-
-    return addr + 0x38C;
-    // return addr;
+    for (INT_PTR offset : offsets)
+    {
+        INT_PTR b;
+        ReadProcessMemory(handle, (void *)(addr + offset), &b, 4, 0);
+        addr += b;
+        std::cout << std::hex << b
+                  << "+" << std::hex << offset
+                  << " so addr is now " << std::hex << addr << std::endl;
+    }
+    
+    addr += 0x38C;
+    return addr;
 }
 
 void setLeds(CorsairLedPositions *ledPositions, double percentage)
@@ -207,10 +207,13 @@ void loop(CorsairLedPositions *ledPositions, HANDLE handle, UINT_PTR pointer)
     {
         // XXX: Get this value repeatably. I suck at it.
         // For demos, I used cheat engine to grab the memory locations.
-        // auto percentage = getRocketLeagueTurbo(handle, 0x1C1F428198C);
+        // auto percentage = getRocketLeagueTurbo(handle, 0x1C1F44E6E8C);
         auto percentage = getRocketLeagueTurbo(handle, pointer);
 
-        setLeds(ledPositions, percentage);
+        std::cout << percentage << std::endl;
+
+        if (0 <= percentage && percentage <= 100)
+            setLeds(ledPositions, percentage);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
@@ -222,7 +225,7 @@ int main()
     if (const auto error = CorsairGetLastError())
     {
         std::cout << "Handshake failed: " << toString(error) << std::endl;
-        getchar();
+        (void)getchar();
         return -1;
     }
 
