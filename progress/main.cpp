@@ -10,46 +10,45 @@
 #include <CUESDK.h>
 #endif
 
-#include <iostream>
-#include <algorithm>
-#include <thread>
-#include <future>
-#include <vector>
-#include <windows.h>
+#include <psapi.h>
 #include <stdlib.h>
 #include <tchar.h>
-#include <psapi.h>
+#include <windows.h>
 
-const int redZone = 80; // darkOrangeStop
+#include <algorithm>
+#include <future>
+#include <iostream>
+#include <thread>
+#include <vector>
+
+const int redZone = 80;  // darkOrangeStop
 const int yellowStop = 60;
 const int lightOrangeStop = 70;
 const char *windowName = "Rocket League (64-bit, DX11, Cooked)";
 
-const char *toString(CorsairError error)
-{
-    switch (error)
-    {
-    case CE_Success:
-        return "CE_Success";
-    case CE_ServerNotFound:
-        return "CE_ServerNotFound";
-    case CE_NoControl:
-        return "CE_NoControl";
-    case CE_ProtocolHandshakeMissing:
-        return "CE_ProtocolHandshakeMissing";
-    case CE_IncompatibleProtocol:
-        return "CE_IncompatibleProtocol";
-    case CE_InvalidArguments:
-        return "CE_InvalidArguments";
-    default:
-        return "unknown error";
+const char *toString(CorsairError error) {
+    switch (error) {
+        case CE_Success:
+            return "CE_Success";
+        case CE_ServerNotFound:
+            return "CE_ServerNotFound";
+        case CE_NoControl:
+            return "CE_NoControl";
+        case CE_ProtocolHandshakeMissing:
+            return "CE_ProtocolHandshakeMissing";
+        case CE_IncompatibleProtocol:
+            return "CE_IncompatibleProtocol";
+        case CE_InvalidArguments:
+            return "CE_InvalidArguments";
+        default:
+            return "unknown error";
     }
 }
 
-double getKeyboardWidth(CorsairLedPositions *ledPositions)
-{
+double getKeyboardWidth(CorsairLedPositions *ledPositions) {
     const auto minmaxLeds = std::minmax_element(
-        ledPositions->pLedPosition, ledPositions->pLedPosition + ledPositions->numberOfLed,
+        ledPositions->pLedPosition,
+        ledPositions->pLedPosition + ledPositions->numberOfLed,
         [](const CorsairLedPosition &clp1, const CorsairLedPosition &clp2) {
             return clp1.left < clp2.left;
         });
@@ -63,12 +62,10 @@ double getKeyboardWidth(CorsairLedPositions *ledPositions)
     // - minmaxLeds.first->left;
 }
 
-DWORD getProcessId()
-{
+DWORD getProcessId() {
     HWND hWnd = FindWindowA(NULL, windowName);
 
-    if (hWnd == NULL)
-        return NULL;
+    if (hWnd == NULL) return NULL;
 
     DWORD processID;
     GetWindowThreadProcessId(hWnd, &processID);
@@ -76,29 +73,28 @@ DWORD getProcessId()
     return processID;
 }
 
-HANDLE initProcessHandle()
-{
+HANDLE initProcessHandle() {
     DWORD processID = getProcessId();
     return OpenProcess(PROCESS_VM_READ, true, processID);
 }
 
-DWORD_PTR GetProcessBaseAddress()
-{
+DWORD_PTR GetProcessBaseAddress() {
     DWORD processID = getProcessId();
     DWORD_PTR baseAddress = NULL;
     HANDLE processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processID);
     LPBYTE moduleArrayBytes;
     DWORD bytesRequired;
 
-    if (processHandle && EnumProcessModules(processHandle, NULL, 0, &bytesRequired) && bytesRequired)
-    {
+    if (processHandle &&
+        EnumProcessModules(processHandle, NULL, 0, &bytesRequired) &&
+        bytesRequired) {
         moduleArrayBytes = (LPBYTE)LocalAlloc(LPTR, bytesRequired);
 
-        if (moduleArrayBytes)
-        {
+        if (moduleArrayBytes) {
             HMODULE *moduleArray = (HMODULE *)moduleArrayBytes;
 
-            if (EnumProcessModules(processHandle, moduleArray, bytesRequired, &bytesRequired))
+            if (EnumProcessModules(processHandle, moduleArray, bytesRequired,
+                                   &bytesRequired))
                 baseAddress = (DWORD_PTR)moduleArray[0];
 
             LocalFree(moduleArrayBytes);
@@ -110,19 +106,15 @@ DWORD_PTR GetProcessBaseAddress()
     return baseAddress;
 }
 
-HANDLE getRocketLeagueHandle()
-{
+HANDLE getRocketLeagueHandle() {
     HANDLE handle = NULL;
 
-    while (handle == NULL && !GetAsyncKeyState(VK_ESCAPE))
-    {
+    while (handle == NULL && !GetAsyncKeyState(VK_ESCAPE)) {
         handle = initProcessHandle();
-        if (handle == NULL)
-        {
-            std::cout << "Can't find Rocket League. Please start the gaaaaame!\n";
-        }
-        else
-        {
+        if (handle == NULL) {
+            std::cout
+                << "Can't find Rocket League. Please start the gaaaaame!\n";
+        } else {
             std::cout << "Found Rocket League!\n";
             break;
         }
@@ -131,83 +123,67 @@ HANDLE getRocketLeagueHandle()
     return handle;
 }
 
-int getRocketLeagueTurbo(HANDLE handle, INT_PTR p)
-{
+int getRocketLeagueTurbo(HANDLE handle, INT_PTR p) {
     int value;
     ReadProcessMemory(handle, (LPVOID)p, &value, 4, NULL);
 
     return value;
 }
 
-INT_PTR getRocketLeagueTurboPointer(HANDLE handle)
-{
-    INT_PTR base = (INT_PTR)(GetProcessBaseAddress());
-    std::cout << "ProcessBaseAddress: " << std::hex << base << std::endl
-              << "handle: " << std::hex << handle << std::endl;
-    base += 0x02350D30;
+INT_PTR getRocketLeagueTurboPointer(HANDLE handle) {
+    INT_PTR addr = (INT_PTR)(GetProcessBaseAddress());
+    addr += 0x02360C18;
 
-    INT_PTR addr;
-    ReadProcessMemory(handle, (void *)base, &addr, 4, NULL);
-    std::cout << "addr: " << addr << std::endl;
+    std::cout << "BaseAddress: " << std::hex << addr << std::endl;
 
-    INT_PTR offsets[] = {0x88, 0xC0, 0x08};
+    INT_PTR offsets[] = {0x88, 0xC0, 0x08, 0x38C};
 
-    for (INT_PTR offset : offsets)
-    {
-        INT_PTR b;
-        ReadProcessMemory(handle, (void *)(addr + offset), &b, 4, 0);
-        addr += b;
-        std::cout << std::hex << b
-                  << "+" << std::hex << offset
-                  << " so addr is now " << std::hex << addr << std::endl;
+    // addr = 0x1C1F0F86660;
+
+    for (INT_PTR offset : offsets) {
+        std::cout << "before addr: " << addr << std::endl;
+        ReadProcessMemory(handle, (LPCVOID)addr, &addr, sizeof(addr), 0);
+        std::cout << "after  addr: " << addr << std::endl;
+        addr += offset;
     }
-    
-    addr += 0x38C;
+
     return addr;
 }
 
-void setLeds(CorsairLedPositions *ledPositions, double percentage)
-{
+void setLeds(CorsairLedPositions *ledPositions, double percentage) {
     // Should store keyboardWidth instead of calculating it each time
     const double keyboardWidth = getKeyboardWidth(ledPositions);
 
     const double boostWidth = keyboardWidth * percentage / 100;
     std::vector<CorsairLedColor> vec;
 
-    for (int i = 0, n = ledPositions->numberOfLed; i < n; i++)
-    {
+    for (int i = 0, n = ledPositions->numberOfLed; i < n; i++) {
         const auto ledPos = ledPositions->pLedPosition[i];
         CorsairLedColor ledColor = CorsairLedColor();
         ledColor.ledId = ledPos.ledId;
 
-        if (ledPos.left < boostWidth)
-        {
+        if (ledPos.left < boostWidth) {
             double posPct = ledPos.left / keyboardWidth * 100;
 
             ledColor.r = 255;
             ledColor.g = 145;
 
-            if (posPct >= yellowStop)
-                ledColor.g = 87;
-            if (posPct >= lightOrangeStop)
-                ledColor.g = 37;
-            if (posPct >= redZone)
-                ledColor.g = 0;
+            if (posPct >= yellowStop) ledColor.g = 87;
+            if (posPct >= lightOrangeStop) ledColor.g = 37;
+            if (posPct >= redZone) ledColor.g = 0;
         }
         vec.push_back(ledColor);
     }
     CorsairSetLedsColors(static_cast<int>(vec.size()), vec.data());
 }
 
-void loop(CorsairLedPositions *ledPositions, HANDLE handle, UINT_PTR pointer)
-{
+void loop(CorsairLedPositions *ledPositions, HANDLE handle, UINT_PTR pointer) {
     std::cout << "pointer: " << pointer << std::endl;
     // while (!GetAsyncKeyState(VK_ESCAPE))
-    while (true)
-    {
+    while (true) {
         // XXX: Get this value repeatably. I suck at it.
         // For demos, I used cheat engine to grab the memory locations.
-        // auto percentage = getRocketLeagueTurbo(handle, 0x1C1F44E6E8C);
+        // auto percentage = getRocketLeagueTurbo(handle, 0X1C1913EFC8C);
         auto percentage = getRocketLeagueTurbo(handle, pointer);
 
         std::cout << percentage << std::endl;
@@ -219,11 +195,9 @@ void loop(CorsairLedPositions *ledPositions, HANDLE handle, UINT_PTR pointer)
     }
 }
 
-int main()
-{
+int main() {
     CorsairPerformProtocolHandshake();
-    if (const auto error = CorsairGetLastError())
-    {
+    if (const auto error = CorsairGetLastError()) {
         std::cout << "Handshake failed: " << toString(error) << std::endl;
         (void)getchar();
         return -1;
@@ -231,8 +205,7 @@ int main()
 
     // const auto ledPositions = CorsairGetLedPositions();
     CorsairLedPositions *ledPositions = CorsairGetLedPositions();
-    if (ledPositions && ledPositions->numberOfLed <= 0)
-    {
+    if (ledPositions && ledPositions->numberOfLed <= 0) {
         std::cout << "No Corsair Leds detected! Exiting...\n";
         return -1;
     }
