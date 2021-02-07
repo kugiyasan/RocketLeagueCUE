@@ -10,21 +10,26 @@
 #include <CUESDK.h>
 #endif
 
-#include <psapi.h>
+#include <algorithm>
+#include <iostream>
+#include <future>
+#include <thread>
+#include <vector>
+
 #include <stdlib.h>
 #include <tchar.h>
 #include <windows.h>
 
-#include <algorithm>
-#include <future>
-#include <iostream>
-#include <thread>
-#include <vector>
+// I have no clue why, but this include needs to be the last one,
+// or else the code won't compile!
+#include <psapi.h>
 
 const int redZone = 80;  // darkOrangeStop
 const int yellowStop = 60;
 const int lightOrangeStop = 70;
+
 const char *windowName = "Rocket League (64-bit, DX11, Cooked)";
+double keyboardWidth;
 
 const char *toString(CorsairError error) {
     switch (error) {
@@ -132,28 +137,24 @@ int getRocketLeagueTurbo(HANDLE handle, INT_PTR p) {
 
 INT_PTR getRocketLeagueTurboPointer(HANDLE handle) {
     INT_PTR addr = (INT_PTR)(GetProcessBaseAddress());
-    addr += 0x02360C18;
+    addr += 0x2368DD0;
 
     std::cout << "BaseAddress: " << std::hex << addr << std::endl;
 
-    INT_PTR offsets[] = {0x88, 0xC0, 0x08, 0x38C};
-
-    // addr = 0x1C1F0F86660;
+    INT_PTR offsets[] = {0x70, 0x2F0, 0x88, 0xC0, 0x08, 0x38C};
 
     for (INT_PTR offset : offsets) {
-        std::cout << "before addr: " << addr << std::endl;
+        // std::cout << "before addr: " << addr << std::endl;
         ReadProcessMemory(handle, (LPCVOID)addr, &addr, sizeof(addr), 0);
-        std::cout << "after  addr: " << addr << std::endl;
+        // std::cout << "after  addr: " << addr << std::endl;
         addr += offset;
     }
 
+    std::cout << "addr: " << addr << std::endl;
     return addr;
 }
 
 void setLeds(CorsairLedPositions *ledPositions, double percentage) {
-    // Should store keyboardWidth instead of calculating it each time
-    const double keyboardWidth = getKeyboardWidth(ledPositions);
-
     const double boostWidth = keyboardWidth * percentage / 100;
     std::vector<CorsairLedColor> vec;
 
@@ -177,19 +178,23 @@ void setLeds(CorsairLedPositions *ledPositions, double percentage) {
     CorsairSetLedsColors(static_cast<int>(vec.size()), vec.data());
 }
 
-void loop(CorsairLedPositions *ledPositions, HANDLE handle, UINT_PTR pointer) {
+void loop(CorsairLedPositions *ledPositions, HANDLE handle) {
+    UINT_PTR pointer = getRocketLeagueTurboPointer(handle);
     std::cout << "pointer: " << pointer << std::endl;
+
     // while (!GetAsyncKeyState(VK_ESCAPE))
     while (true) {
+        if (getProcessId() == NULL) return;
+
         // XXX: Get this value repeatably. I suck at it.
         // For demos, I used cheat engine to grab the memory locations.
         // auto percentage = getRocketLeagueTurbo(handle, 0X1C1913EFC8C);
+        pointer = getRocketLeagueTurboPointer(handle);
         auto percentage = getRocketLeagueTurbo(handle, pointer);
 
         std::cout << percentage << std::endl;
 
-        if (0 <= percentage && percentage <= 100)
-            setLeds(ledPositions, percentage);
+        setLeds(ledPositions, percentage);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
@@ -209,12 +214,12 @@ int main() {
         std::cout << "No Corsair Leds detected! Exiting...\n";
         return -1;
     }
+    keyboardWidth = getKeyboardWidth(ledPositions);
 
     std::cout << "Working... Press Escape to close program...\n\n";
 
     HANDLE handle = getRocketLeagueHandle();
-    UINT_PTR pointer = getRocketLeagueTurboPointer(handle);
-    loop(ledPositions, handle, pointer);
+    loop(ledPositions, handle);
 
     return 0;
 }
