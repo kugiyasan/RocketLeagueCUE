@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{25C6D4EA-4722-433D-9180-151A900DB380}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>progress</RootNamespace>
+    <RootNamespace>src</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>rocketleaguecue</ProjectName>
   </PropertyGroup>
