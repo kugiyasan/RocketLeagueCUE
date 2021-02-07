@@ -98,7 +98,7 @@
       <AdditionalLibraryDirectories>$(SolutionDir)..\..\lib\i386\</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy  /Y /I  "$(SolutionDir)..\..\bin\i386\*" "$(OutDir)"</Command>
+      <Command>xcopy  /Y /I  "$(SolutionDir)..\..\redist\i386\*" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -117,7 +117,6 @@
       <AdditionalLibraryDirectories>$(SolutionDir)..\..\lib\x64\</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <!-- <Command>xcopy  /Y /I  "$(SolutionDir)..\..\bin\x64\*" "$(OutDir)"</Command> -->
       <Command>xcopy  /Y /I  "$(SolutionDir)..\..\redist\x64\*" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -141,7 +140,7 @@
       <AdditionalLibraryDirectories>$(SolutionDir)..\..\lib\i386\</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy  /Y /I  "$(SolutionDir)..\..\bin\i386\*" "$(OutDir)"</Command>
+      <Command>xcopy  /Y /I  "$(SolutionDir)..\..\redist\i386\*" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -164,7 +163,7 @@
       <AdditionalDependencies>CUESDK.x64_2013.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy  /Y /I  "$(SolutionDir)..\..\bin\x64\*" "$(OutDir)"</Command>
+      <Command>xcopy  /Y /I  "$(SolutionDir)..\..\redist\x64\*" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

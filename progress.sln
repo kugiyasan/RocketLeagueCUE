@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.757
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30413.136
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "progress", "progress\progress.vcxproj", "{25C6D4EA-4722-433D-9180-151A900DB380}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "rocketleaguecue", "progress\progress.vcxproj", "{25C6D4EA-4722-433D-9180-151A900DB380}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,5 +24,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6FE2B931-6F43-4DEA-9590-C17824422B17}
 	EndGlobalSection
 EndGlobal

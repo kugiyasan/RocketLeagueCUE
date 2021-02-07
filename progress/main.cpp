@@ -28,7 +28,11 @@ const int redZone = 80;  // darkOrangeStop
 const int yellowStop = 60;
 const int lightOrangeStop = 70;
 
+//* CHANGE THE FOLLOWING VARIABLES IN ORDER TO MAKE IT WORK FOR YOU
 const char *windowName = "Rocket League (64-bit, DX11, Cooked)";
+INT_PTR baseAddress = 0x2368DD0;
+INT_PTR offsets[] = {0x70, 0x2F0, 0x88, 0xC0, 0x08, 0x38C};
+
 double keyboardWidth;
 
 const char *toString(CorsairError error) {
@@ -137,11 +141,9 @@ int getRocketLeagueTurbo(HANDLE handle, INT_PTR p) {
 
 INT_PTR getRocketLeagueTurboPointer(HANDLE handle) {
     INT_PTR addr = (INT_PTR)(GetProcessBaseAddress());
-    addr += 0x2368DD0;
+    addr += baseAddress;
 
     std::cout << "BaseAddress: " << std::hex << addr << std::endl;
-
-    INT_PTR offsets[] = {0x70, 0x2F0, 0x88, 0xC0, 0x08, 0x38C};
 
     for (INT_PTR offset : offsets) {
         // std::cout << "before addr: " << addr << std::endl;
@@ -182,7 +184,6 @@ void loop(CorsairLedPositions *ledPositions, HANDLE handle) {
     UINT_PTR pointer = getRocketLeagueTurboPointer(handle);
     std::cout << "pointer: " << pointer << std::endl;
 
-    // while (!GetAsyncKeyState(VK_ESCAPE))
     while (true) {
         if (getProcessId() == NULL) return;
 
@@ -208,7 +209,6 @@ int main() {
         return -1;
     }
 
-    // const auto ledPositions = CorsairGetLedPositions();
     CorsairLedPositions *ledPositions = CorsairGetLedPositions();
     if (ledPositions && ledPositions->numberOfLed <= 0) {
         std::cout << "No Corsair Leds detected! Exiting...\n";
@@ -216,7 +216,7 @@ int main() {
     }
     keyboardWidth = getKeyboardWidth(ledPositions);
 
-    std::cout << "Working... Press Escape to close program...\n\n";
+    std::cout << "Working... Press Ctrl+C to close program...\n\n";
 
     HANDLE handle = getRocketLeagueHandle();
     loop(ledPositions, handle);
